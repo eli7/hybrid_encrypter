@@ -71,7 +71,7 @@ public class Curupira implements BlockCipher {
      */
     private byte cTimes(byte u) {
         // see page 13, item 5.
-        return xTimes(xTimes(xTimes((byte)((byte)(xTimes(u) ^ u) ^ u))));
+        return xTimes(xTimes((byte) (xTimes((byte) (xTimes(u) ^ u)) ^ u)));
     }
 
     /**
@@ -176,7 +176,6 @@ public class Curupira implements BlockCipher {
      */
     private byte[] applyLinearDiffusionLayer(byte[] a) {
         // see page 7.
-        // TODO check usage of dTimesa
         byte[] b = new byte[12];
         for (int j = 0; j < 4; j++) {
             dTimesa(a, j, b);
@@ -208,7 +207,7 @@ public class Curupira implements BlockCipher {
      **************************************************************/
 
     /**
-     * Performs a Curupira whitening round on *a*
+     * Performs a Curupira whitening round on matrix a
      *
      * @param   a     3x4 matrix (from previous round).
      * @param   k0    k(0) round key.
@@ -221,7 +220,7 @@ public class Curupira implements BlockCipher {
     }
 
     /**
-     * Performs a Curupira last round on *a*
+     * Performs a Curupira last round on matrix a
      *
      * @param   a     3x4 matrix (from previous round).
      * @param   kR    k(R) round key.
@@ -234,7 +233,7 @@ public class Curupira implements BlockCipher {
     }
 
     /**
-     * Performs a Curupira "intermediary" round on *a*
+     * Performs a Curupira "intermediary" round on matrix a
      *
      * @param   a     3x4 matrix (from previous round).
      * @param   kr    k(r) round key.
@@ -247,7 +246,7 @@ public class Curupira implements BlockCipher {
     }
 
     /**
-     * Performs a Curupira unkeyed round on *a*
+     * Performs a Curupira unkeyed round on matrix a
      *
      * @param   a     3x4 matrix (from previous round).
      * @return        Resulting 3x4 matrix.
@@ -265,42 +264,46 @@ public class Curupira implements BlockCipher {
      * Calculates schedule constant matrix of s.
      *
      * @param   s       A positive integer.
-     * @return          Resulting 3x4 matrix.
+     * @return          Resulting 3x2t schedule constants matrix.
      *
      */
     public byte[] calculateScheduleConstant(int s) {
         // see page 7
         int t = this.keyBits / 48;
         byte[] q = new byte[3 * 2 * t];
+        if (s == 0) {
+          return q;
+        } 
         // For i = 0
         for (int j = 0; j < 2 * t; j++) {
             q[3 * j] = sBox((byte)(2 * t * (s - 1) + j));
-            // TODO make sure this cast is safe.
+            // Note: 2t(s-1) + j is at most 144 for 192 bits cipher key.
         }
         // For i > 0
         for (int i = 1; i < 3; i++) {
             for (int j = 0; j < 2 * t; j++) {
                 q[i + 3 * j] = 0;
             }
-        }
+        }            
         return q;
     }
 
     /**
      * Applies constant addition to subkey Kr.
      *
-     * @param   Kr              3x4 matrix representing the Kr sub key.
+     * @param   Kr              3x2t matrix representing the Kr subkey.
      * @param   subkeyRank      Subkey rank.
      * 
-     * @return          Resulting 3x4 matrix.
+     * @return                  Resulting 3x2t matrix.
      *
      */
     public byte[] applyConstantAddition(byte[] Kr, int subkeyRank) {
         // see page 8
-        byte[] b = new byte[12];
+        byte[] b = new byte[3 * 2 * t];
+        // Do constant addition
         byte[] q = calculateScheduleConstant(subkeyRank);
         for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 4; j++) {
+            for (int j = 0; j < 2 * t; j++) {
                 b[i + 3 * j] = (byte)(Kr[i + 3 * j] ^ q[i + 3 * j]);
             }
         }
@@ -324,10 +327,10 @@ public class Curupira implements BlockCipher {
             b[1 + 3 * j] = a[1 + 3 * ((j + 1) % (2 * t))];
             // For i = 2.
             if (j > 0) {
-              b[2 + 3 * j] = a[2 + 3 * ((j - 1) % (2 * t))];
-              // Note that 0-1 % 2t would give -1.
+                b[2 + 3 * j] = a[2 + 3 * ((j - 1) % (2 * t))];
+                // Note that (0 - 1) % 2t would give -1.
             } else {
-              b[2 + 3 * j] = a[2 + 3 * (2 * t - 1)];
+                b[2] = a[2 + 3 * (2 * t - 1)];
             }
         }
         return b;
@@ -336,22 +339,21 @@ public class Curupira implements BlockCipher {
     /**
      * Applies linear diffusion to matrix a.
      *
-     * @param   a       3x4 matrix.
-     * @return          Resulting 3x4 matrix.
+     * @param   a       3x2t matrix.
+     * @return          Resulting 3x2t matrix.
      *
      */
     public byte[] applyLinearDiffusion(byte[] a) {
         // see page 8
-        // TODO check usage of eTimesa
-        byte[] b = new byte[12];
-        for (int j = 0; j < 4; j++) {
+        byte[] b = new byte[3 * 2 * t];
+        for (int j = 0; j < 2 * t; j++) {
             eTimesa(a, j, b, true);
         }
         return b;
     }
 
     /**
-     * Gets subkey for the current round given subkey to the previous round.
+     * Gets subkey for the current round given subkey from the previous round.
      *
      * @param   kr      3x4 matrix representing the Kr subkey.
      * @return          3x4 matrix representing the Kr+1 subkey.
@@ -383,7 +385,7 @@ public class Curupira implements BlockCipher {
             }
         }
         return kr;
-    }  
+    }
 
     /**
      * Calculates both encryption and decryption round keys.
@@ -391,16 +393,14 @@ public class Curupira implements BlockCipher {
      */
     private void calculateRoundKeys() {
         // see pages 9 and 10.
-        encryptionRoundKeys = new byte[this.R + 1][12];
-        decryptionRoundKeys = new byte[this.R + 1][12];
+        this.encryptionRoundKeys = new byte[this.R + 1][12];
+        this.decryptionRoundKeys = new byte[this.R + 1][12];
         byte[] Kr = this.cipherKey;
         byte[] kr = selectRoundKey(Kr);
-        BlockPrinter.printM2t(kr, t);  // DEBUG
         this.encryptionRoundKeys[0] = kr;
         for (int r = 1; r <= this.R; r++) {
-            Kr = calculateNextSubkey(Kr, r);     
+            Kr = calculateNextSubkey(Kr, r);
             kr = selectRoundKey(Kr);
-            BlockPrinter.printM2t(kr, t);  // DEBUG
             this.encryptionRoundKeys[r] = kr;
             this.decryptionRoundKeys[this.R - r] = applyLinearDiffusionLayer(kr);
         }
@@ -415,21 +415,18 @@ public class Curupira implements BlockCipher {
     /** 
      * Encrypt/Decrypts (depending on the keys) exactly one block of plaintext. 
      * 
-     * @param  mBlock      plaintext block. 
+     * @param  mBlock      plaintext block.
      * @param  cBlock      ciphertext block. 
      */ 
     public void processBlock(byte[] mBlock, byte[] cBlock, byte[][] roundKeys) {
         // see page 9.
         byte[] cBlockTmp;
         cBlockTmp = performWhiteningRound(mBlock, roundKeys[0]);
-        // BlockPrinter.printM4(cBlockTmp);  // DEBUG
         for (int r = 1; r <= this.R - 1; r++) {
-            cBlockTmp = performRound(cBlock, roundKeys[r]);
-            // BlockPrinter.printM4(cBlockTmp);  // DEBUG
+            cBlockTmp = performRound(cBlockTmp, roundKeys[r]);
         }
-        cBlockTmp = performLastRound(cBlock, roundKeys[R]);
-        // BlockPrinter.printM4(cBlockTmp);  // DEBUG
-        // Copy results to given reference
+        cBlockTmp = performLastRound(cBlockTmp, roundKeys[this.R]);
+        // Copy results to given output reference
         for (int k = 0; k < 12; k++) {
           cBlock[k] = cBlockTmp[k];
         }
@@ -445,7 +442,7 @@ public class Curupira implements BlockCipher {
      */
     public Curupira() {
         initXTimesTable();
-        initSBoxTable();      
+        initSBoxTable();  
     }
 
     /** 
@@ -520,9 +517,14 @@ public class Curupira implements BlockCipher {
      * @param  mBlock      plaintext block. 
      */ 
     public void sct(byte[] cBlock, byte[] mBlock) {
-        cBlock = performUnkeyedRound(mBlock);
+        byte[] mBlockTmp = new byte[12];
+        mBlockTmp = performUnkeyedRound(cBlock);
         for (int r = 0; r < 3; r++) {
-            cBlock = performUnkeyedRound(cBlock);
+            mBlockTmp = performUnkeyedRound(mBlockTmp);
+        }
+        // Copy results to given output reference
+        for (int k = 0; k < 12; k++) {
+            mBlock[k] = mBlockTmp[k];
         }
     }
 } 
