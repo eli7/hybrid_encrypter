@@ -505,7 +505,7 @@ public class Curupira implements BlockCipher {
      */ 
     public void decrypt(byte[] cBlock, byte[] mBlock) {
         // see page 10.
-        processBlock(mBlock, cBlock, this.decryptionRoundKeys);
+        processBlock(cBlock, mBlock, this.decryptionRoundKeys);
     }
 
     /** 
