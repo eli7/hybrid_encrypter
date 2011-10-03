@@ -199,7 +199,7 @@ public class UI {
 	mac.update(aData, aData.length);
 	byte[] macTag = mac.getTag(null, macTagBits);
 	// Write MAC.
-	if (!writeFile(macTag, fileName + ".mac.b64"))
+	if (!writeFile(macTag, fileName + ".mac"))
 	    return;
     }
 
@@ -245,11 +245,11 @@ public class UI {
 	byte[] cData = aead.encrypt(mData, mData.length, null);
 	byte[] macTag = aead.getTag(null, macTagBits);
 	// Write encrypted message and corresponding MAC and IV.
-	if (!writeFile(cData, msgFileName + ".ciph.b64"))
+	if (!writeFile(cData, msgFileName + ".ciph"))
 	    return;
-	if (!writeFile(macTag, msgFileName + ".mac.b64"))
+	if (!writeFile(macTag, msgFileName + ".mac"))
 	    return;
-	if (!writeFile(iv, msgFileName + ".iv.b64"))
+	if (!writeFile(iv, msgFileName + ".iv"))
 	    return;
     }
 
