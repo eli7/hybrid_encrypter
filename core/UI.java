@@ -87,7 +87,7 @@ public class UI {
 	    case 9:
 		System.exit(0);
 	    default:
-		System.out.print("ERRO: Opção inválida. ");
+		System.out.print("ERRO: Opcao invalida. ");
 	    }
 	}
     }
@@ -219,7 +219,7 @@ public class UI {
 	if (Arrays.equals(calculatedMacTag, macTag))
 	    System.out.println("A mensagem e' valida.");
 	else
-	    System.out.println("A mensagem é INVALIDA.");
+	    System.out.println("A mensagem e' INVALIDA.");
     }
 
     // Menu - Options 5/7
